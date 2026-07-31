@@ -1,0 +1,37 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+   
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare pages artifact
+        run: |
+          set -e
+          mkdir -p public
+          # copy the site root files (adjust if you add assets or a build step)
+          cp -R index.html public/ || true
+          if [ -d "assets" ]; then cp -R assets public/; fi
+          if [ -d "css" ]; then cp -R css public/; fi
+          if [ -d "js" ]; then cp -R js public/; fi
+
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: public
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v1
