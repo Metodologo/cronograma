@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Cronograma de Tesis y EPS</title>
+<style>
+  :root{
+    --ink: #16233d;
+    --ink-2: #223257;
+    --paper: #f5f1e8;
+    --paper-2: #ece5d3;
+    --amber: #d99a3d;
+    --amber-dark: #b87c22;
+    --sage: #4a7c59;
+    --coral: #c14a3b;
+    --line: rgba(22,35,61,0.15);
+    --font-display: Georgia, 'Times New Roman', serif;
+    --font-body: 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    line-height:1.5;
+  }
+
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;}
+
+  /* HERO - portada tipo carátula de tesis */
+  .hero{
+    background:var(--ink);
+    color:var(--paper);
+    padding:56px 20px 44px;
+    text-align:center;
+    position:relative;
+    border-bottom:6px solid var(--amber);
+  }
+  .hero .eyebrow{
+    font-family:var(--font-mono);
+    letter-spacing:2px;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--amber);
+    margin-bottom:14px;
+  }
+  .hero h1{
+    font-family:var(--font-display);
+    font-size:clamp(28px,5vw,42px);
+    margin:0 0 14px;
+    font-weight:700;
+    line-height:1.15;
+  }
+  .hero p{
+    max-width:520px;
+    margin:0 auto;
+    color:rgba(245,241,232,0.85);
+    font-size:16px;
+  }
+
+  /* FORM CARD - estilo hoja de control académico */
+  .form-card{
+    background:var(--paper);
+    border:2px solid var(--ink);
+    margin:-28px 20px 0;
+    padding:28px 24px;
+    position:relative;
+    box-shadow:6px 6px 0 var(--ink-2);
+  }
+  .form-card .label{
+    font-family:var(--font-mono);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    color:var(--ink-2);
+    display:block;
+    margin-bottom:6px;
+  }
+  .form-row{margin-bottom:18px;}
+  .form-row input, .form-row select{
+    width:100%;
+    padding:12px 14px;
+    font-size:16px;
+    font-family:var(--font-body);
+    border:1.5px solid var(--ink);
+    background:#fff;
+    color:var(--ink);
+    border-radius:0;
+  }
+  .form-row input:focus, .form-row select:focus{
+    outline:3px solid var(--amber);
+    outline-offset:1px;
+  }
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:520px){.grid-2{grid-template-columns:1fr;}}
+
+  .btn-generate{
+    width:100%;
+    padding:16px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    font-family:var(--font-mono);
+    font-size:15px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-generate:hover{background:var(--amber-dark);}
+  .btn-generate:focus-visible{outline:3px solid var(--amber);outline-offset:2px;}
+
+  /* RESULT SECTION */
+  #resultado{display:none;margin-top:36px;}
+
+  .status-stamp{
+    display:inline-block;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    padding:8px 16px;
+    border:3px double currentColor;
+    transform:rotate(-2deg);
+    margin-bottom:8px;
+  }
+  .status-verde{color:var(--sage);}
+  .status-amarillo{color:var(--amber-dark);}
+  .status-rojo{color:var(--coral);}
+
+  .dias-restantes{
+    font-family:var(--font-display);
+    font-size:15px;
+    color:var(--ink-2);
+    margin-bottom:28px;
+  }
+  .dias-restantes strong{font-size:22px;font-family:var(--font-mono);}
+
+  /* TIMELINE */
+  .fase{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-top:1px solid var(--line);
+  }
+  .fase:last-child{border-bottom:1px solid var(--line);}
+  .fase-check{
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    appearance:none;
+    flex-shrink:0;
+    width:26px;height:26px;
+    border:2px solid var(--ink);
+    margin-top:2px;
+    cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    background:#fff;
+    font-size:16px;
+    user-select:none;
+    padding:0;
+    line-height:1;
+  }
+  .fase-check:focus{outline:3px solid var(--amber);outline-offset:2px;}
+  .fase-check.marcado{background:var(--sage);border-color:var(--sage);color:#fff;}
+  .fase-body{flex:1;}
+  .fase-nombre{font-weight:700;font-size:16px;margin-bottom:2px;}
+  .fase-nombre.marcado{text-decoration:line-through;color:var(--ink-2);opacity:.6;}
+  .fase-semanas{font-family:var(--font-mono);font-size:12.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.5px;}
+  .fase-fechas{font-size:13px;color:var(--ink);opacity:.75;margin-top:4px;}
+
+  .progreso-track{
+    height:8px;
+    background:var(--paper-2);
+    border:1px solid var(--ink);
+    margin:20px 0 4px;
+  }
+  .progreso-fill{
+    height:100%;
+    background:var(--sage);
+    width:0%;
+    transition:width .3s ease;
+  }
+  .progreso-label{font-family:var(--font-mono);font-size:12px;color:var(--ink-2);}
+
+  /* TESTIMONIOS - notas al margen */
+  .testimonios{margin-top:52px;}
+  .testimonios h2{
+    font-family:var(--font-display);
+    font-size:22px;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:10px;
+    margin-bottom:24px;
+  }
+  .nota{
+    background:#fffdf7;
+    border-left:4px solid var(--amber);
+    padding:16px 18px;
+    margin-bottom:16px;
+    box-shadow:2px 2px 0 var(--line);
+    position:relative;
+  }
+  .nota p{margin:0 0 10px;font-size:15px;font-style:italic;color:var(--ink);}
+  .nota .firma{
+    font-family:var(--font-mono);
+    font-size:12px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    color:var(--ink-2);
+    font-style:normal;
+  }
+
+  /* CTA FINAL */
+  .cta-final{
+    margin-top:48px;
+    background:var(--ink);
+    color:var(--paper);
+    padding:32px 24px;
+    text-align:center;
+    border-top:6px solid var(--amber);
+  }
+  .cta-final h3{
+    font-family:var(--font-display);
+    font-size:20px;
+    margin:0 0 10px;
+  }
+  .cta-final p{
+    color:rgba(245,241,232,0.8);
+    font-size:14.5px;
+    max-width:460px;
+    margin:0 auto 20px;
+  }
+  .cta-btn{
+    display:inline-block;
+    background:var(--amber);
+    color:var(--ink);
+    font-family:var(--font-mono);
+    font-weight:700;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    font-size:14px;
+    padding:14px 26px;
+    text-decoration:none;
+    border:2px solid var(--amber);
+  }
+  .cta-btn:hover{background:var(--paper);border-color:var(--paper);}
+  .cta-tel{
+    font-family:var(--font-mono);
+    font-size:13px;
+    color:rgba(245,241,232,0.6);
+    margin-top:14px;
+  }
+
+  ::selection{background:var(--amber);color:var(--ink);}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">Herramienta gratuita &middot; Universidades de Guatemala</div>
+  <h1>¿Cuánto tiempo te queda realmente para tu tesis o EPS?</h1>
+  <p>Ingresa tu fecha límite y te armamos un cronograma semana por semana, con las fases que toda tesis o EPS necesita para salir bien.</p>
+</div>
+
+<div class="wrap">
+  <div class="form-card">
+    <div class="form-row">
+      <label class="label" for="fecha">Fecha en la que necesitas entregar o defender</label>
+      <input type="date" id="fecha" aria-describedby="fechaHelp">
+    </div>
+    <div class="grid-2">
+      <div class="form-row">
+        <label class="label" for="tipo">Tipo de proceso</label>
+        <select id="tipo">
+          <option value="tesis">Tesis</option>
+          <option value="eps">EPS</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="label" for="universidad">Universidad (opcional)</label>
+        <select id="universidad">
+          <option value="">Selecciona...</option>
+          <option>USAC</option>
+          <option>Universidad Rafael Landívar</option>
+          <option>Universidad Mariano Gálvez</option>
+          <option>Universidad del Valle</option>
+          <option>Universidad Francisco Marroquín</option>
+          <option>Universidad Panamericana</option>
+          <option>Universidad Galileo</option>
+          <option>Otra / Regional</option>
+        </select>
+      </div>
+    </div>
+    <button id="btnGenerate" class="btn-generate" type="button">Generar mi cronograma</button>
+  </div>
+
+  <div id="resultado" aria-live="polite">
+    <div id="statusBox"></div>
+    <div class="progreso-label" id="progresoLabel">0 de 6 fases completadas</div>
+    <div class="progreso-track"><div class="progreso-fill" id="progresoFill"></div></div>
+    <div id="fasesContainer"></div>
+  </div>
+
+  <div class="testimonios">
+    <h2>Lo que dicen quienes ya pasaron por esto</h2>
+
+    <div class="nota">
+      <p>"Iba muy perdida con el marco teórico y el tiempo se me venía encima. El taller me ayudó a ordenar todo el proceso justo antes de mi examen público. Ya estoy a un paso de graduarme."</p>
+      <div class="firma">— Estudiante de Derecho, Universidad de San Carlos de Guatemala</div>
+    </div>
+
+    <div class="nota">
+      <p>"Lo que más valoro fue el profesionalismo con el que se explicó cada fase de la tesis. Se nota la experiencia del docente y eso hace la diferencia cuando uno no sabe por dónde empezar."</p>
+      <div class="firma">— Estudiante de Humanidades, Universidad Rafael Landívar</div>
+    </div>
+
+    <div class="nota">
+      <p>"Gracias a este apoyo logré terminar mi proceso y ya me gradué como Abogado y Notario. Si estás trabado con tu tesis, vale la pena buscar ayuda antes de que se acumule más el atraso."</p>
+      <div class="firma">— Graduado como Abogado y Notario, Universidad Regional</div>
+    </div>
+  </div>
+
+  <div class="cta-final">
+    <h3>¿Tu cronograma te muestra que vas atrasado?</h3>
+    <p>Si necesitas asesoría profesional para avanzar más rápido en tu tesis o EPS, puedes comunicarte directamente después de ver esta herramienta.</p>
+    <a class="cta-btn" href="https://wa.me/50242455109" target="_blank" rel="noopener">Escribir al 4245-5109</a>
+    <div class="cta-tel">WhatsApp / Llamadas: 4245-5109</div>
+  </div>
+</div>
+
+<script>
+  const fases = {
+    tesis: [
+      {nombre:"Planteamiento del problema", peso:0.15},
+      {nombre:"Marco teórico", peso:0.20},
+      {nombre:"Metodología", peso:0.15},
+      {nombre:"Trabajo de campo y recolección de datos", peso:0.20},
+      {nombre:"Análisis de resultados y redacción", peso:0.20},
+      {nombre:"Revisión final y preparación de defensa", peso:0.10},
+    ],
+    eps: [
+      {nombre:"Diagnóstico institucional", peso:0.15},
+      {nombre:"Planificación del proyecto", peso:0.15},
+      {nombre:"Ejecución de actividades", peso:0.35},
+      {nombre:"Sistematización de la experiencia", peso:0.20},
+      {nombre:"Redacción del informe final", peso:0.10},
+      {nombre:"Revisión y entrega", peso:0.05},
+    ]
+  };
+
+  // Formatea fecha (usa el objeto Date proporcionado)
+  function formatoFecha(d){
+    return d.toLocaleDateString('es-GT', {day:'numeric', month:'short'});
+  }
+
+  // Helper: convierte "YYYY-MM-DD" en Date UTC a medianoche (sin desplazamientos locales)
+  function parseFechaInputUTC(fechaStr){
+    const parts = fechaStr.split('-').map(Number);
+    if(parts.length !== 3) return null;
+    const [y,m,d] = parts;
+    return new Date(Date.UTC(y, m-1, d, 0, 0, 0));
+  }
+
+  // Inicialización: min y valor por defecto para el input de fecha
+  document.addEventListener('DOMContentLoaded', () => {
+    const fechaEl = document.getElementById('fecha');
+    const today = new Date();
+    // crear fechas en ISO yyyy-mm-dd (usando UTC slice para consistencia)
+    const isoToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())).toISOString().slice(0,10);
+    const in30 = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()+30)).toISOString().slice(0,10);
+    // establecer mínimo como hoy (opcional: podríamos usar mañana)
+    fechaEl.min = isoToday;
+    fechaEl.value = in30;
+
+    document.getElementById('btnGenerate').addEventListener('click', generarCronograma);
+  });
+
+  // Reparte días proporcionalmente respetando minDays y ajustando el sobrante/resto
+  function repartirDiasExacto(totalDias, pesos){
+    const n = pesos.length;
+    // Definir min por fase (si hay suficiente tiempo, min 3; si no, min 1)
+    const minPreferido = 3;
+    const minDays = totalDias >= (n * minPreferido) ? minPreferido : 1;
+
+    // calcular ideales
+    let items = pesos.map((p, i) => {
+      const ideal = totalDias * p;
+      return {i, p, ideal, floor: Math.max(minDays, Math.floor(ideal)), frac: ideal - Math.floor(ideal)};
+    });
+
+    // si floor sum > totalDias, debemos recortar hasta llegar a totalDias
+    let sumFloor = items.reduce((s, it) => s + it.floor, 0);
+    if(sumFloor > totalDias){
+      // Ordenar por frac asc (menos merecedor) y recortar hasta llegar
+      items.sort((a,b) => (a.frac - b.frac) || (b.floor - a.floor));
+      for(let k=0; k<items.length && sumFloor>totalDias; k++){
+        const canReduce = items[k].floor - minDays;
+        if(canReduce <= 0) continue;
+        const reduceBy = Math.min(canReduce, sumFloor - totalDias);
+        items[k].floor -= reduceBy;
+        sumFloor -= reduceBy;
+      }
+    } else if(sumFloor < totalDias){
+      // distribuir restante por mayor frac
+      let remaining = totalDias - sumFloor;
+      items.sort((a,b) => (b.frac - a.frac) || (b.ideal - a.ideal));
+      let idx = 0;
+      while(remaining > 0){
+        items[idx % items.length].floor += 1;
+        remaining -= 1;
+        idx += 1;
+      }
+    }
+    // restaurar orden original
+    items.sort((a,b) => a.i - b.i);
+    return items.map(it => it.floor);
+  }
+
+  function generarCronograma(){
+    const fechaInput = document.getElementById('fecha').value;
+    const tipo = document.getElementById('tipo').value;
+    const statusBox = document.getElementById('statusBox');
+    const fasesContainer = document.getElementById('fasesContainer');
+    fasesContainer.innerHTML = '';
+    document.getElementById('progresoFill').style.width = '0%';
+    document.getElementById('progresoLabel').textContent = '';
+
+    if(!fechaInput){
+      alert('Por favor selecciona la fecha límite.');
+      return;
+    }
+
+    // Parseo seguro en UTC (evita desplazamientos por zona horaria)
+    const limite = parseFechaInputUTC(fechaInput);
+    if(!limite || isNaN(limite.getTime())){
+      alert('Fecha inválida.');
+      return;
+    }
+
+    // hoy en UTC a medianoche
+    const ahora = new Date();
+    const hoyUtc = new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate(), 0,0,0));
+    const msPorDia = 1000 * 60 * 60 * 24;
+    const diasRestantes = Math.round((limite.getTime() - hoyUtc.getTime()) / msPorDia);
+
+    if(diasRestantes <= 0){
+      statusBox.innerHTML = `<div class="status-stamp status-rojo">Fecha ya vencida</div>
+        <div class="dias-restantes">Ingresa una fecha futura para generar tu cronograma.</div>`;
+      document.getElementById('resultado').style.display = 'block';
+      return;
+    }
+
+    let statusClase, statusTexto;
+    if(diasRestantes > 90){
+      statusClase = 'status-verde'; statusTexto = 'Tienes buen margen de tiempo';
+    } else if(diasRestantes > 30){
+      statusClase = 'status-amarillo'; statusTexto = 'El tiempo empieza a apretar';
+    } else {
+      statusClase = 'status-rojo'; statusTexto = 'Riesgo alto de retraso';
+    }
+
+    statusBox.innerHTML = `<div class="status-stamp ${statusClase}">${statusTexto}</div>
+      <div class="dias-restantes">Te quedan <strong>${diasRestantes}</strong> días para tu ${tipo === 'tesis' ? 'tesis' : 'EPS'}.</div>`;
+
+    const listaFases = fases[tipo];
+    const pesos = listaFases.map(f => f.peso);
+    const diasPorFase = repartirDiasExacto(diasRestantes, pesos);
+
+    let acumulado = 0;
+    for(let i=0;i<listaFases.length;i++){
+      const fase = listaFases[i];
+      const diasFase = Math.max(1, diasPorFase[i]); // seguridad
+      const inicio = new Date(hoyUtc.getTime() + acumulado * msPorDia);
+      const fin = new Date(hoyUtc.getTime() + (acumulado + diasFase) * msPorDia);
+      acumulado += diasFase;
+      const semanas = Math.max(1, Math.round(diasFase / 7));
+
+      const div = document.createElement('div');
+      div.className = 'fase';
+      div.innerHTML = `
+        <button class="fase-check" data-idx="${i}" aria-pressed="false" type="button">✓</button>
+        <div class="fase-body">
+          <div class="fase-nombre" data-idx="${i}">${fase.nombre}</div>
+          <div class="fase-semanas">${semanas} semana${semanas>1?'s':''} aprox.</div>
+          <div class="fase-fechas">${formatoFecha(inicio)} — ${formatoFecha(fin)}</div>
+        </div>
+      `;
+      fasesContainer.appendChild(div);
+
+      // añadir manejadores para accesibilidad y toggle
+      const btn = div.querySelector('.fase-check');
+      btn.addEventListener('click', () => toggleFase(btn));
+      btn.addEventListener('keydown', (ev) => {
+        if(ev.key === ' ' || ev.key === 'Enter'){
+          ev.preventDefault();
+          toggleFase(btn);
+        }
+      });
+    }
+
+    const total = listaFases.length;
+    document.getElementById('progresoFill').style.width = '0%';
+    document.getElementById('progresoLabel').textContent = `0 de ${total} fases completadas`;
+    document.getElementById('resultado').style.display = 'block';
+    document.getElementById('resultado').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  function toggleFase(el){
+    const isMarked = el.classList.toggle('marcado');
+    el.setAttribute('aria-pressed', isMarked ? 'true' : 'false');
+
+    const idx = el.getAttribute('data-idx');
+    const nombre = document.querySelector(`.fase-nombre[data-idx="${idx}"]`);
+    if(nombre) nombre.classList.toggle('marcado', isMarked);
+
+    const total = document.querySelectorAll('.fase-check').length;
+    const marcadas = document.querySelectorAll('.fase-check.marcado').length;
+    const pct = total === 0 ? 0 : Math.round((marcadas / total) * 100);
+    document.getElementById('progresoFill').style.width = pct + '%';
+    document.getElementById('progresoLabel').textContent = `${marcadas} de ${total} fases completadas`;
+  }
+</script>
+
+</body>
+</html>
